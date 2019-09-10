@@ -1,0 +1,111 @@
+# PART 1: Install emnist library 
+# Please visit https://pypi.org/project/emnist/ 
+!pip install emnist
+
+# PART 2: 
+import matplotlib.pyplot as plt
+from emnist import extract_training_samples
+from emnist import extract_test_samples
+trainX, trainY = extract_training_samples('letters')
+testX, testY = extract_test_samples('letters')
+fig = plt.figure()
+for i in range(9):
+  plt.subplot(3,3,i+1)
+  plt.tight_layout()
+  plt.imshow(trainX[i], cmap='gray', interpolation='none')
+  plt.title("Digit: {}".format(trainY[i]))
+  plt.xticks([])
+  plt.yticks([])
+fig
+
+
+# PART 3: 
+print("X_train shape", trainX.shape)
+print("y_train shape", trainY.shape)
+print("X_test shape", testX.shape)
+print("y_test shape", testY.shape)
+
+#input image size 28*28
+img_rows , img_cols = 28, 28
+
+#reshaping
+#"channels_first" assumes (channels, conv_dim1, conv_dim2, conv_dim3).
+trainX = trainX.reshape(trainX.shape[0], img_rows, img_cols, 1)
+testX = testX.reshape(testX.shape[0], img_rows, img_cols, 1)
+input_shape = (img_rows, img_cols, 1)
+#more reshaping
+trainX = trainX.astype('float32')
+testX = testX.astype('float32')
+trainX /= 255
+testX /= 255
+print('X_train shape:', trainX.shape) #X_train shape: (60000, 28, 28, 1)
+
+
+# PART 4: 
+import keras
+#set number of categories
+num_category = 26
+# convert class vectors to binary class matrices
+trainY = keras.utils.to_categorical(trainY, num_category)
+testY = keras.utils.to_categorical(testY, num_category)
+
+# PART 5:
+pool_size = (2,2)
+import os
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.layers import Input, Flatten, ZeroPadding2D, Conv2D, Dense, MaxPooling2D, concatenate, Conv2DTranspose, BatchNormalization, Activation, Dropout, Reshape, Permute
+from tensorflow.python.keras.optimizers import Adadelta, Nadam
+from tensorflow.python.keras.models import Model, load_model, Sequential
+from tensorflow.python.keras.utils import multi_gpu_model, plot_model
+from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.python.keras.preprocessing import image
+import tensorflow as tf
+from tensorflow.python.keras.losses import binary_crossentropy
+cnn_net = Sequential()
+
+cnn_net.add(Conv2D(32,kernel_size=(3,3),strides=(1,1),input_shape=(28,28,1)))
+cnn_net.add(Activation('relu'))
+cnn_net.add(MaxPooling2D(pool_size=pool_size))
+
+cnn_net.add(ZeroPadding2D((1,1)))
+cnn_net.add(Conv2D(48,kernel_size=(3,3)))
+cnn_net.add(Activation('relu'))
+cnn_net.add(BatchNormalization(epsilon=1e-6,axis=1))
+cnn_net.add(MaxPooling2D(pool_size=pool_size))
+
+cnn_net.add(ZeroPadding2D((1,1)))
+cnn_net.add(Conv2D(64,kernel_size=(2,2)))
+cnn_net.add(Activation('relu'))
+cnn_net.add(BatchNormalization(epsilon=1e-6,axis=1))
+cnn_net.add(MaxPooling2D(pool_size = pool_size))
+
+cnn_net.add(Dropout(0.25))
+cnn_net.add(Flatten())
+
+cnn_net.add(Dense(3168))
+cnn_net.add(Activation('relu'))
+
+cnn_net.add(Dense(num_category))
+cnn_net.add(Activation('softmax'))
+
+
+cnn_net.compile(loss="categorical_crossentropy",
+              optimizer="adam",
+              metrics=['accuracy'])
+              
+# PART 6: 
+###显卡设置
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+batch_size = 64
+num_epoch = 100
+#model training
+model_log = cnn_net.fit(trainX, trainY,
+          batch_size=batch_size,
+          epochs=num_epoch,
+          verbose=2,
+          validation_data=(testX, testY))
+
